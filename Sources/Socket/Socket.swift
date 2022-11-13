@@ -6,6 +6,8 @@
 //
 import Foundation
 
+public let asciiEncoding = String.Encoding.ascii.rawValue
+
 public enum Const{
     static var sockaddr_inSize = socklen_t(MemoryLayout<sockaddr_in>.size)
 }
@@ -16,6 +18,8 @@ public enum SocketError: Error {
     case ListenError
     case AcceptError
     case clientConnectionError
+    //project
+    case networkSnakeError
 }
 
 public class SocketManager {
@@ -30,8 +34,14 @@ public class SocketManager {
     public private(set) var sockAddrPtr: UnsafeMutablePointer<sockaddr>?
     public private(set) var clientIPAddr: String?
     var clientConnectionStatus: CInt?
+    //project 
+    var port: UInt16
+    var receiverSocketFD: CInt?
+    var senderSocketFD: CInt?
+
 
     public init(isForServer: Bool = true, serverIP: NSString, port: UInt16) {
+        self.port = port
         let serverIPInCString = serverIP.cString(using: String.Encoding.ascii.rawValue)!
         serverSocketAdd = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
                                       sin_family: sa_family_t(AF_INET),
@@ -111,4 +121,22 @@ public class SocketManager {
         }
     }
 
+    //MARK: - Project converted from v4 example
+    public func netWorkSnake(from fromIp: NSString, to toIp: NSString) throws {
+        let fromIpCString = fromIp.cString(using: asciiEncoding)
+        receiverSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0) 
+        if receiverSocketFD == -1 {
+            throw SocketError.networkSnakeError
+        }        
+        let senderAddr = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
+                                     sin_family: sa_family_t(AF_INET),
+                                     sin_port: port.bigEndian,
+                                     sin_addr: in_addr(s_addr: inet_addr(fromIpCString)),
+                                     sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
+
+        let option = UnsafeMutablePointer<CInt>.allocate(capacity: 1)
+        option.initialize(to: 1)
+        Darwin.setsockopt(receiverSocketFD!, SOL_SOCKET, SO_REUSEADDR, option, socklen_t(MemoryLayout.size(ofValue: Int())))
+        let result = Darwin.bind(receiverSocketFD!, )
+    }
 }
