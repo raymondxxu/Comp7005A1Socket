@@ -27,7 +27,7 @@ public class SocketManager {
     var serverSocketAdd: sockaddr_in
     public private(set) var socketFD: CInt?
     var bindResult: CInt?
-    var serverBacklogNumber: CInt = 1024
+    var serverBacklogNumber: CInt = 5
     var listenResult: CInt?
     var clientSocketAdd: sockaddr_in?
     public private(set) var serverAcceptFD: CInt?
@@ -36,8 +36,8 @@ public class SocketManager {
     var clientConnectionStatus: CInt?
     //project 
     var port: UInt16
-    var receiverSocketFD: CInt?
-    var senderSocketFD: CInt?
+    var fromSocketFD: CInt?
+    var toSocketFD: CInt?
 
 
     public init(isForServer: Bool = true, serverIP: NSString, port: UInt16) {
@@ -66,12 +66,15 @@ public class SocketManager {
     }
     
     //MARK: - SERVER
-    public func bind() throws {
-        try withUnsafePointer(to: &serverSocketAdd) { [weak self] pointer in
+    //Updated for final project
+    public func bind(socketAdd: sockaddr_in? = nil, socketFD: CInt? = nil) throws {
+        var socketAddRef = socketAdd == nil ? serverSocketAdd : socketAdd! 
+        try withUnsafePointer(to: &socketAddRef) { [weak self] pointer in
             guard let self = self else { return }
             //swift way to cast C Pointer
             try pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { castedPointer in
-                self.bindResult = Darwin.bind(self.socketFD!, castedPointer, Const.sockaddr_inSize)
+                let socketFD = socketFD == nil ? self.socketFD! : socketFD!
+                self.bindResult = Darwin.bind(socketFD, castedPointer, Const.sockaddr_inSize)
                 guard let bindResult = self.bindResult, bindResult >= 0 else {
                     throw SocketError.BindError
                 }
@@ -79,15 +82,19 @@ public class SocketManager {
         }
     }
     
-    public func listen() throws {
-        listenResult = Darwin.listen(socketFD!, serverBacklogNumber)
+    //Updated for final project
+    public func listen(socketFD: CInt? = nil) throws {
+        let socketFD = socketFD == nil ? self.socketFD! : socketFD! 
+        listenResult = Darwin.listen(socketFD, serverBacklogNumber)
         guard let result = listenResult, result >= 0 else {
            throw SocketError.ListenError
         }
     }
 
-    public func accept() throws {
-        try withUnsafePointer(to: &clientSocketAdd) { [weak self] pointer in
+    //Updated for final project
+    public func accept(toFD: sockaddr_in? = nil) throws {
+        var toFD = toFD == nil ? self.clientSocketAdd! : toFD!
+        try withUnsafePointer(to: &toFD) { [weak self] pointer in
             guard let self = self else { return }
             try pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { castedPointer in
                 self.sockAddrPtr = UnsafeMutablePointer<sockaddr>(mutating: castedPointer)
@@ -109,6 +116,7 @@ public class SocketManager {
     }
 
     //MARK: - Client
+    //updated for final project
     public func connect() throws {
         try withUnsafePointer(to: &serverSocketAdd) { [weak self] pointer in
            guard let self = self else { return }
@@ -121,22 +129,33 @@ public class SocketManager {
         }
     }
 
-    //MARK: - Project converted from v4 example
+    //MARK: - Added for final project
     public func netWorkSnake(from fromIp: NSString, to toIp: NSString) throws {
         let fromIpCString = fromIp.cString(using: asciiEncoding)
-        receiverSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0) 
-        if receiverSocketFD == -1 {
+        fromSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0) 
+        if fromSocketFD == -1 {
             throw SocketError.networkSnakeError
         }        
-        let senderAddr = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
-                                     sin_family: sa_family_t(AF_INET),
-                                     sin_port: port.bigEndian,
-                                     sin_addr: in_addr(s_addr: inet_addr(fromIpCString)),
-                                     sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
+        let fromAddr = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
+                                   sin_family: sa_family_t(AF_INET),
+                                   sin_port: port.bigEndian,
+                                   sin_addr: in_addr(s_addr: inet_addr(fromIpCString)),
+                                   sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
 
         let option = UnsafeMutablePointer<CInt>.allocate(capacity: 1)
         option.initialize(to: 1)
-        Darwin.setsockopt(receiverSocketFD!, SOL_SOCKET, SO_REUSEADDR, option, socklen_t(MemoryLayout.size(ofValue: Int())))
-        let result = Darwin.bind(receiverSocketFD!, )
+        Darwin.setsockopt(fromSocketFD!, SOL_SOCKET, SO_REUSEADDR, option, socklen_t(MemoryLayout.size(ofValue: Int())))
+        try bind(socketAdd: fromAddr, socketFD: fromSocketFD)
+        try listen(socketFD: fromSocketFD)
+        try accept()
+        let toIpCString = toIp.cString(using: asciiEncoding)
+        toSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0)        
+        let toAddr = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
+                                 sin_family: sa_family_t(AF_INET),
+                                 sin_port: port.bigEndian,
+                                 sin_addr: in_addr(s_addr: inet_addr(fromIpCString)),
+                                 sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
+    
+
     }
 }
