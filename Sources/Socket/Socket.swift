@@ -117,11 +117,13 @@ public class SocketManager {
 
     //MARK: - Client
     //updated for final project
-    public func connect() throws {
-        try withUnsafePointer(to: &serverSocketAdd) { [weak self] pointer in
+    public func connect(serverAdd: sockaddr_in? = nil, socketFD: CInt? = nil) throws {
+        var serverAdd = serverAdd == nil ? serverSocketAdd : serverAdd!
+        try withUnsafePointer(to: &serverAdd) { [weak self] pointer in
            guard let self = self else { return }
            try pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { castedPointer in
-                self.clientConnectionStatus = Darwin.connect(socketFD!, castedPointer, Const.sockaddr_inSize)
+                let socketFDRef = socketFD == nil ? self.socketFD! : socketFD!
+                self.clientConnectionStatus = Darwin.connect(socketFDRef, castedPointer, Const.sockaddr_inSize)
                 guard let statusCode = self.clientConnectionStatus, statusCode >= 0 else {
                     throw SocketError.clientConnectionError
                 }
@@ -153,9 +155,10 @@ public class SocketManager {
         let toAddr = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
                                  sin_family: sa_family_t(AF_INET),
                                  sin_port: port.bigEndian,
-                                 sin_addr: in_addr(s_addr: inet_addr(fromIpCString)),
+                                 sin_addr: in_addr(s_addr: inet_addr(toIpCString)),
                                  sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
-    
-
+        try connect(serverAdd: toAddr, socketFD: toSocketFD)
+         
+                
     }
 }
