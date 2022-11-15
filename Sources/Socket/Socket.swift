@@ -151,7 +151,7 @@ public class SocketManager {
             Darwin.setsockopt(fromSocketFD!, SOL_SOCKET, SO_REUSEADDR, option, socklen_t(MemoryLayout.size(ofValue: Int())))
             try bind(socketAdd: fromAddr, socketFD: fromSocketFD)
             try listen(socketFD: fromSocketFD)
-            Darwin.accept(socketFD!, nil, nil)
+            Darwin.accept(fromSocketFD!, nil, nil)
         }
         func initToSocket() throws {
             let toIpCString = toIp.cString(using: asciiEncoding)
