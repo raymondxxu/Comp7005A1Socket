@@ -7,6 +7,7 @@
 import Foundation
 
 public let asciiEncoding = String.Encoding.ascii.rawValue
+fileprivate let buffSize = 1024
 
 public enum Const{
     static var sockaddr_inSize = socklen_t(MemoryLayout<sockaddr_in>.size)
@@ -20,6 +21,7 @@ public enum SocketError: Error {
     case clientConnectionError
     //project
     case networkSnakeError
+    case copyError
 }
 
 public class SocketManager {
@@ -133,32 +135,51 @@ public class SocketManager {
 
     //MARK: - Added for final project
     public func netWorkSnake(from fromIp: NSString, to toIp: NSString) throws {
-        let fromIpCString = fromIp.cString(using: asciiEncoding)
-        fromSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0) 
-        if fromSocketFD == -1 {
-            throw SocketError.networkSnakeError
-        }        
-        let fromAddr = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
-                                   sin_family: sa_family_t(AF_INET),
-                                   sin_port: port.bigEndian,
-                                   sin_addr: in_addr(s_addr: inet_addr(fromIpCString)),
-                                   sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
+        func initFromSocket() throws {
+            let fromIpCString = fromIp.cString(using: asciiEncoding)
+            fromSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0) 
+            if fromSocketFD == -1 {
+                throw SocketError.networkSnakeError
+            }        
+            let fromAddr = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
+                                       sin_family: sa_family_t(AF_INET),
+                                       sin_port: port.bigEndian,
+                                       sin_addr: in_addr(s_addr: inet_addr(fromIpCString)),
+                                       sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
 
-        let option = UnsafeMutablePointer<CInt>.allocate(capacity: 1)
-        option.initialize(to: 1)
-        Darwin.setsockopt(fromSocketFD!, SOL_SOCKET, SO_REUSEADDR, option, socklen_t(MemoryLayout.size(ofValue: Int())))
-        try bind(socketAdd: fromAddr, socketFD: fromSocketFD)
-        try listen(socketFD: fromSocketFD)
-        try accept()
-        let toIpCString = toIp.cString(using: asciiEncoding)
-        toSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0)        
-        let toAddr = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
-                                 sin_family: sa_family_t(AF_INET),
-                                 sin_port: port.bigEndian,
-                                 sin_addr: in_addr(s_addr: inet_addr(toIpCString)),
-                                 sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
-        try connect(serverAdd: toAddr, socketFD: toSocketFD)
-         
-                
+            let option = UnsafeMutablePointer<CInt>.allocate(capacity: 1)
+            option.initialize(to: 1)
+            Darwin.setsockopt(fromSocketFD!, SOL_SOCKET, SO_REUSEADDR, option, socklen_t(MemoryLayout.size(ofValue: Int())))
+            try bind(socketAdd: fromAddr, socketFD: fromSocketFD)
+            try listen(socketFD: fromSocketFD)
+            try accept()
+
+        }
+        func initToSocket() throws {
+            let toIpCString = toIp.cString(using: asciiEncoding)
+            toSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0)        
+            let toAddr = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
+                                     sin_family: sa_family_t(AF_INET),
+                                     sin_port: port.bigEndian,
+                                     sin_addr: in_addr(s_addr: inet_addr(toIpCString)),
+                                     sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
+            try connect(serverAdd: toAddr, socketFD: toSocketFD)
+        }
+        func copy() throws {
+            var buffer = UnsafeMutablePointer<CChar>.allocate(capacity: buffSize)
+            while true {
+                let readBytes = read(fromSocketFD!, &buffer, buffSize)
+                guard readBytes > 0 else {
+                    return 
+                }
+                let writeBytes = write(toSocketFD!, buffer, readBytes)
+                if writeBytes == -1 {
+                    throw SocketError.copyError
+                }
+            }
+        }
+        try initFromSocket()
+        try initToSocket()
+        try copy()
     }
 }
