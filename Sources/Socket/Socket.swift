@@ -94,12 +94,14 @@ public class SocketManager {
     }
 
     //Updated for final project
-    public func accept() throws {
-        try withUnsafePointer(to: &clientSocketAdd) { [weak self] pointer in
+    public func accept(socketAdd: sockaddr_in? = nil, socketFD: CInt? = nil) throws {
+        var socketAdd = socketAdd == nil ? clientSocketAdd! : socketAdd!
+        try withUnsafePointer(to: &socketAdd) { [weak self] pointer in
             guard let self = self else { return }
             try pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { castedPointer in
                 self.sockAddrPtr = UnsafeMutablePointer<sockaddr>(mutating: castedPointer)
-                self.serverAcceptFD = Darwin.accept(self.socketFD!, self.sockAddrPtr, &Const.sockaddr_inSize)
+                let socketFD = socketFD == nil ? self.socketFD! : socketFD!
+                self.serverAcceptFD = Darwin.accept(socketFD, self.sockAddrPtr, &Const.sockaddr_inSize)
                 guard let acceptFD = self.serverAcceptFD, acceptFD >= 0 else {
                     throw SocketError.AcceptError
                 }
@@ -151,8 +153,9 @@ public class SocketManager {
             Darwin.setsockopt(fromSocketFD!, SOL_SOCKET, SO_REUSEADDR, option, socklen_t(MemoryLayout.size(ofValue: Int())))
             try bind(socketAdd: fromAddr, socketFD: fromSocketFD)
             try listen(socketFD: fromSocketFD)
-            Darwin.accept(socketFD!, nil, nil)
+            try accept(socketAdd: fromAddr, socketFD: fromSocketFD)
         }
+
         func initToSocket() throws {
             let toIpCString = toIp.cString(using: asciiEncoding)
             toSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0)        
@@ -163,6 +166,7 @@ public class SocketManager {
                                      sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
             try connect(serverAdd: toAddr, socketFD: toSocketFD)
         }
+
         func copy() throws {
             var buffer = UnsafeMutablePointer<CChar>.allocate(capacity: buffSize)
             while true {
