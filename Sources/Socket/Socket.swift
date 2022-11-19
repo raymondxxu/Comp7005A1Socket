@@ -168,12 +168,14 @@ public class SocketManager {
         }
 
         func copy() throws {
-            var buffer = UnsafeMutablePointer<CChar>.allocate(capacity: buffSize)
+            var buffer = Array<CChar>(repeating: 0, count: 1024)
             while true {
-                let readBytes = read(fromSocketFD!, &buffer, buffSize)
+                let readBytes = read(serverAcceptFD!, &buffer, buffSize)
                 guard readBytes > 0 else {
-                    return 
+                    print(String.init(cString: strerror(errno)))
+                    return
                 }
+                print( String(cString: buffer))
                 let writeBytes = write(toSocketFD!, buffer, readBytes)
                 if writeBytes == -1 {
                     throw SocketError.copyError
