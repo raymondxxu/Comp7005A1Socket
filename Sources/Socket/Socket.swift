@@ -94,14 +94,12 @@ public class SocketManager {
     }
 
     //Updated for final project
-    public func accept(socketAdd: sockaddr_in? = nil, socketFD: CInt? = nil) throws {
-        var socketAdd = socketAdd == nil ? clientSocketAdd! : socketAdd!
-        try withUnsafePointer(to: &socketAdd) { [weak self] pointer in
+    public func accept(socketAdd: sockaddr_in? = nil, tsocketFD: CInt? = nil) throws {
+        try withUnsafePointer(to: &clientSocketAdd) { [weak self] pointer in
             guard let self = self else { return }
             try pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { castedPointer in
                 self.sockAddrPtr = UnsafeMutablePointer<sockaddr>(mutating: castedPointer)
-                let socketFD = socketFD == nil ? self.socketFD! : socketFD!
-                self.serverAcceptFD = Darwin.accept(socketFD, self.sockAddrPtr, &Const.sockaddr_inSize)
+                self.serverAcceptFD = Darwin.accept(self.socketFD!, self.sockAddrPtr, &Const.sockaddr_inSize)
                 guard let acceptFD = self.serverAcceptFD, acceptFD >= 0 else {
                     throw SocketError.AcceptError
                 }
@@ -153,9 +151,8 @@ public class SocketManager {
             Darwin.setsockopt(fromSocketFD!, SOL_SOCKET, SO_REUSEADDR, option, socklen_t(MemoryLayout.size(ofValue: Int())))
             try bind(socketAdd: fromAddr, socketFD: fromSocketFD)
             try listen(socketFD: fromSocketFD)
-            try accept(socketAdd: fromAddr, socketFD: fromSocketFD)
+            try accept()
         }
-
         func initToSocket() throws {
             let toIpCString = toIp.cString(using: asciiEncoding)
             toSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0)        
@@ -166,16 +163,13 @@ public class SocketManager {
                                      sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
             try connect(serverAdd: toAddr, socketFD: toSocketFD)
         }
-
         func copy() throws {
-            var buffer = Array<CChar>(repeating: 0, count: 1024)
+            var buffer = UnsafeMutablePointer<CChar>.allocate(capacity: buffSize)
             while true {
-                let readBytes = read(serverAcceptFD!, &buffer, buffSize)
-                guard readBytes > 0 else {
-                    print(String.init(cString: strerror(errno)))
-                    return
+                let readBytes = read(fromSocketFD!, &buffer, buffSize)
+                guard readBytes >= 0 else {
+                    return 
                 }
-                print( String(cString: buffer))
                 let writeBytes = write(toSocketFD!, buffer, readBytes)
                 if writeBytes == -1 {
                     throw SocketError.copyError
