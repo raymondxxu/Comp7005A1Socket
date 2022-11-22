@@ -169,6 +169,7 @@ public class SocketManager {
             while true {
                 let readBytes = read(fromSocketFD!, &buffer, buffSize)
                 guard readBytes >= 0 else {
+                    print(String(cString: strerror(errno)))
                     return 
                 }
                 let writeBytes = write(toSocketFD!, buffer, readBytes)
