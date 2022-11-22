@@ -164,22 +164,7 @@ public class SocketManager {
                                      sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
             try connect(serverAdd: toAddr, socketFD: toSocketFD)
         }
-        func copy() throws {
-            var buffer = Array<CChar>(repeating: 0, count: buffSize)
-            while true {
-                let readBytes = read(serverAcceptFD!, &buffer, buffSize)
-                guard readBytes >= 0 else {
-                    print(String(cString: strerror(errno)))
-                    return 
-                }
-                let writeBytes = write(toSocketFD!, buffer, readBytes)
-                if writeBytes == -1 {
-                    throw SocketError.copyError
-                }
-            }
-        }
         try initFromSocket()
         try initToSocket()
-        try copy()
     }
 }
