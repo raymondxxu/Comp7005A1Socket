@@ -94,12 +94,12 @@ public class SocketManager {
     }
 
     //Updated for final project
-    public func accept(socketAdd: sockaddr_in? = nil, tsocketFD: CInt? = nil) throws {
+    public func accept(socketAdd: sockaddr_in? = nil, socketFD: CInt? = nil) throws {
         try withUnsafePointer(to: &clientSocketAdd) { [weak self] pointer in
             guard let self = self else { return }
             try pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { castedPointer in
                 self.sockAddrPtr = UnsafeMutablePointer<sockaddr>(mutating: castedPointer)
-                let socketFD = tsocketFD == nil ? self.socketFD! : tsocketFD!
+                let socketFD = socketFD == nil ? self.socketFD! : socketFD!
                 self.serverAcceptFD = Darwin.accept(socketFD, self.sockAddrPtr, &Const.sockaddr_inSize)
                 guard let acceptFD = self.serverAcceptFD, acceptFD >= 0 else {
                     throw SocketError.AcceptError
@@ -152,7 +152,7 @@ public class SocketManager {
             Darwin.setsockopt(fromSocketFD!, SOL_SOCKET, SO_REUSEADDR, option, socklen_t(MemoryLayout.size(ofValue: Int())))
             try bind(socketAdd: fromAddr, socketFD: fromSocketFD)
             try listen(socketFD: fromSocketFD)
-            try accept()
+            try accept(socketAdd: fromAddr, socketFD: fromSocketFD)
         }
         func initToSocket() throws {
             let toIpCString = toIp.cString(using: asciiEncoding)
