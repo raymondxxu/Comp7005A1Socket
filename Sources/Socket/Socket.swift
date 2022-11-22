@@ -165,7 +165,7 @@ public class SocketManager {
             try connect(serverAdd: toAddr, socketFD: toSocketFD)
         }
         func copy() throws {
-            var buffer = UnsafeMutablePointer<CChar>.allocate(capacity: buffSize)
+            var buffer = Array<CChar>(repeating: 0, count: buffSize)
             while true {
                 let readBytes = read(serverAcceptFD!, &buffer, buffSize)
                 guard readBytes >= 0 else {
