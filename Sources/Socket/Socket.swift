@@ -168,7 +168,7 @@ public class SocketManager {
             var buffer = UnsafeMutablePointer<CChar>.allocate(capacity: buffSize)
             while true {
                 let readBytes = read(fromSocketFD!, &buffer, buffSize)
-                guard readBytes > 0 else {
+                guard readBytes >= 0 else {
                     return 
                 }
                 let writeBytes = write(toSocketFD!, buffer, readBytes)
