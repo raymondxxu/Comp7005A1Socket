@@ -38,8 +38,8 @@ public class SocketManager {
     var clientConnectionStatus: CInt?
     //project 
     var port: UInt16
-    var fromSocketFD: CInt?
-    var toSocketFD: CInt?
+    public private(set) var fromSocketFD: CInt?
+    public private(set) var toSocketFD: CInt?
 
 
     public init(isForServer: Bool = true, serverIP: NSString, port: UInt16) {
