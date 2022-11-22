@@ -99,7 +99,8 @@ public class SocketManager {
             guard let self = self else { return }
             try pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { castedPointer in
                 self.sockAddrPtr = UnsafeMutablePointer<sockaddr>(mutating: castedPointer)
-                self.serverAcceptFD = Darwin.accept(self.socketFD!, self.sockAddrPtr, &Const.sockaddr_inSize)
+                let socketFD = tsocketFD == nil ? self.socketFD! : tsocketFD!
+                self.serverAcceptFD = Darwin.accept(socketFD, self.sockAddrPtr, &Const.sockaddr_inSize)
                 guard let acceptFD = self.serverAcceptFD, acceptFD >= 0 else {
                     throw SocketError.AcceptError
                 }
@@ -167,7 +168,7 @@ public class SocketManager {
             var buffer = UnsafeMutablePointer<CChar>.allocate(capacity: buffSize)
             while true {
                 let readBytes = read(fromSocketFD!, &buffer, buffSize)
-                guard readBytes >= 0 else {
+                guard readBytes > 0 else {
                     return 
                 }
                 let writeBytes = write(toSocketFD!, buffer, readBytes)
