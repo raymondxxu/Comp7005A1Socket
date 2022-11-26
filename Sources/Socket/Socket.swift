@@ -136,7 +136,7 @@ public class SocketManager {
     }
 
     //MARK: - Added for final project
-    public func netWorkSnake(from fromIp: NSString, to toIp: NSString) throws {
+    public func netWorkSnake(to toIp: NSString) throws {
         func initFromSocket() throws {
             fromSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0) 
             if fromSocketFD == -1 {
