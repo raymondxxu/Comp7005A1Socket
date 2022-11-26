@@ -38,12 +38,14 @@ public class SocketManager {
     var clientConnectionStatus: CInt?
     //project 
     var port: UInt16
+    var receiverPort: UInt16?
     public private(set) var fromSocketFD: CInt?
     public private(set) var toSocketFD: CInt?
 
 
-    public init(isForServer: Bool = true, serverIP: NSString, port: UInt16) {
+    public init(isForServer: Bool = true, serverIP: NSString, port: UInt16, receiverPort: UInt16? = nil) {
         self.port = port
+        self.receiverPort = receiverPort
         let serverIPInCString = serverIP.cString(using: String.Encoding.ascii.rawValue)!
         serverSocketAdd = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
                                       sin_family: sa_family_t(AF_INET),
@@ -159,7 +161,7 @@ public class SocketManager {
             toSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0)        
             let toAddr = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
                                      sin_family: sa_family_t(AF_INET),
-                                     sin_port: port.bigEndian,
+                                     sin_port: receiverPort!.bigEndian,
                                      sin_addr: in_addr(s_addr: inet_addr(toIpCString)),
                                      sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
             try connect(serverAdd: toAddr, socketFD: toSocketFD)
