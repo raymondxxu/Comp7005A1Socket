@@ -138,7 +138,6 @@ public class SocketManager {
     //MARK: - Added for final project
     public func netWorkSnake(from fromIp: NSString, to toIp: NSString) throws {
         func initFromSocket() throws {
-            let fromIpCString = fromIp.cString(using: asciiEncoding)
             fromSocketFD = Darwin.socket(AF_INET, SOCK_STREAM, 0) 
             if fromSocketFD == -1 {
                 throw SocketError.networkSnakeError
@@ -146,7 +145,7 @@ public class SocketManager {
             let fromAddr = sockaddr_in(sin_len: __uint8_t(Const.sockaddr_inSize),
                                        sin_family: sa_family_t(AF_INET),
                                        sin_port: port.bigEndian,
-                                       sin_addr: in_addr(s_addr: inet_addr(fromIpCString)),
+                                       sin_addr: in_addr(s_addr: INADDR_ANY),
                                        sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
 
             let option = UnsafeMutablePointer<CInt>.allocate(capacity: 1)
